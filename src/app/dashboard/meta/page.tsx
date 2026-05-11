@@ -1,20 +1,39 @@
-export default function MetaPage() {
-  const kpis = [
-    { label: 'Inversión Meta', value: '34.100€', sub: '40% del total', color: '#1877F2' },
-    { label: 'Impresiones', value: '2,8M', sub: '+14%', color: '#6B7280' },
-    { label: 'Leads Meta', value: '720', sub: '39% del total', color: '#2B6BE8' },
-    { label: 'CPL Meta', value: '47,4€', sub: '+2% vs ant.', color: '#EF4444' },
-    { label: 'CTR medio', value: '1,82%', sub: '+0,2pp', color: '#6B7280' },
-  ]
+import { createClient } from '@/lib/supabase/server'
 
-  const campanas = [
-    { on: true, name: 'Audi A4 | Lead Gen Form', obj: 'Clientes potenciales', inv: '8.240€', imp: '428K', clics: '7.820', ctr: '1,83%', leads: '186', cpl: '44,3€' },
-    { on: true, name: 'VW Golf 2025 | Retargeting', obj: 'Conversiones', inv: '6.100€', imp: '310K', clics: '5.620', ctr: '1,81%', leads: '142', cpl: '42,9€' },
-    { on: true, name: 'Škoda Octavia | Awareness', obj: 'Alcance', inv: '4.800€', imp: '680K', clics: '4.100', ctr: '0,60%', leads: '68', cpl: '70,6€' },
-    { on: true, name: 'Audi Q5 | Lead Gen', obj: 'Clientes potenciales', inv: '5.960€', imp: '248K', clics: '6.100', ctr: '2,46%', leads: '201', cpl: '29,7€' },
-    { on: false, name: 'VW Touareg | Vídeo reach', obj: 'Alcance de vídeo', inv: '—', imp: '—', clics: '—', ctr: '—', leads: '—', cpl: '—' },
-    { on: true, name: 'Škoda Kodiaq | Ofertas', obj: 'Tráfico', inv: '3.200€', imp: '140K', clics: '2.980', ctr: '2,13%', leads: '58', cpl: '55,2€' },
-    { on: true, name: 'Multimarca | Verano 2025', obj: 'Clientes potenciales', inv: '5.800€', imp: '390K', clics: '5.010', ctr: '1,28%', leads: '65', cpl: '89,2€' },
+export default async function MetaPage() {
+  const supabase = createClient()
+
+  const { data: campanas } = await supabase
+    .from('meta_campaigns')
+    .select('*')
+    .order('date', { ascending: false })
+
+  // Agrupa por campaña cogiendo el dato más reciente
+  const map = new Map()
+  campanas?.forEach(c => {
+    if (!map.has(c.campaign_id)) map.set(c.campaign_id, c)
+    else {
+      const existing = map.get(c.campaign_id)
+      existing.spend += c.spend
+      existing.impressions += c.impressions
+      existing.clicks += c.clicks
+      existing.leads += c.leads
+    }
+  })
+  const lista = Array.from(map.values())
+
+  const totalSpend = lista.reduce((s, c) => s + c.spend, 0)
+  const totalImpressions = lista.reduce((s, c) => s + c.impressions, 0)
+  const totalLeads = lista.reduce((s, c) => s + c.leads, 0)
+  const cpl = totalLeads > 0 ? (totalSpend / totalLeads).toFixed(1) : '—'
+  const ctr = totalImpressions > 0 ? ((lista.reduce((s,c)=>s+c.clicks,0) / totalImpressions) * 100).toFixed(2) : '—'
+
+  const kpis = [
+    { label: 'Inversión Meta', value: totalSpend.toLocaleString('es', {maximumFractionDigits:0})+'€', sub: 'Total acumulado', color: '#1877F2' },
+    { label: 'Impresiones', value: totalImpressions >= 1000000 ? (totalImpressions/1000000).toFixed(1)+'M' : totalImpressions.toLocaleString('es'), sub: 'Total', color: '#6B7280' },
+    { label: 'Leads Meta', value: totalLeads.toLocaleString('es'), sub: 'Total acumulado', color: '#2B6BE8' },
+    { label: 'CPL Meta', value: cpl+'€', sub: 'Coste por lead', color: '#EF4444' },
+    { label: 'CTR medio', value: ctr+'%', sub: 'Clics / impresiones', color: '#6B7280' },
   ]
 
   const card = { background: '#fff', border: '0.5px solid rgba(15,24,39,.08)', borderRadius: 10, padding: '12px 14px' }
@@ -23,7 +42,6 @@ export default function MetaPage() {
 
   return (
     <div>
-      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 7, marginBottom: 12 }}>
         {kpis.map(k => (
           <div key={k.label} style={{ ...card, borderTop: `2px solid ${k.color}` }}>
@@ -34,43 +52,40 @@ export default function MetaPage() {
         ))}
       </div>
 
-      {/* TABLA */}
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '0.5px solid rgba(15,24,39,.08)' }}>
           <span style={{ fontSize: 12, fontWeight: 500, color: '#0F1827' }}>Campañas Meta</span>
-          <span style={{ fontSize: 10, background: '#EBF0FD', color: '#2B6BE8', padding: '3px 9px', borderRadius: 99 }}>7 campañas</span>
+          <span style={{ fontSize: 10, background: '#EBF0FD', color: '#2B6BE8', padding: '3px 9px', borderRadius: 99 }}>{lista.length} campañas</span>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={th}>Estado</th>
+                <th style={th}>Marca</th>
                 <th style={th}>Campaña</th>
-                <th style={th}>Objetivo</th>
                 <th style={th}>Inversión</th>
                 <th style={th}>Impresiones</th>
                 <th style={th}>Clics</th>
-                <th style={th}>CTR</th>
                 <th style={th}>Leads</th>
                 <th style={th}>CPL</th>
               </tr>
             </thead>
             <tbody>
-              {campanas.map((c, i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : 'rgba(238,242,251,.4)' }}>
+              {lista.map((c, i) => (
+                <tr key={c.campaign_id} style={{ background: i % 2 === 0 ? '#fff' : 'rgba(238,242,251,.4)' }}>
                   <td style={td}>
-                    <span style={{ fontSize: 9, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: c.on ? '#ECFDF5' : '#F1F5F9', color: c.on ? '#059669' : '#9CA3AF' }}>
-                      {c.on ? '● Activa' : '○ Pausada'}
+                    <span style={{ fontSize: 9, fontWeight: 500, padding: '2px 7px', borderRadius: 99,
+                      background: c.brand === 'audi' ? '#FEF2F2' : c.brand === 'vw' ? '#EFF6FF' : '#F0FDF4',
+                      color: c.brand === 'audi' ? '#B91C1C' : c.brand === 'vw' ? '#1D4ED8' : '#15803D' }}>
+                      {c.brand?.toUpperCase()}
                     </span>
                   </td>
-                  <td style={{ ...td, fontWeight: 500, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</td>
-                  <td style={td}><span style={{ fontSize: 9, background: '#EFF6FF', color: '#1D4ED8', padding: '2px 7px', borderRadius: 99 }}>{c.obj}</span></td>
-                  <td style={td}>{c.inv}</td>
-                  <td style={td}>{c.imp}</td>
-                  <td style={td}>{c.clics}</td>
-                  <td style={td}>{c.ctr}</td>
+                  <td style={{ ...td, fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.campaign_name}</td>
+                  <td style={td}>{c.spend.toLocaleString('es', {maximumFractionDigits:0})}€</td>
+                  <td style={td}>{c.impressions.toLocaleString('es')}</td>
+                  <td style={td}>{c.clicks.toLocaleString('es')}</td>
                   <td style={{ ...td, fontWeight: 500, color: '#2B6BE8' }}>{c.leads}</td>
-                  <td style={td}>{c.cpl}</td>
+                  <td style={td}>{c.leads > 0 ? (c.spend/c.leads).toFixed(1)+'€' : '—'}</td>
                 </tr>
               ))}
             </tbody>
