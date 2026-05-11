@@ -23,7 +23,7 @@ export default function LoginPage() {
   async function handleGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${location.origin}/auth/callback`, queryParams: { hd: 'safamotor.es' } },
+      options: { redirectTo: `${location.origin}/auth/callback`, queryParams: { hd: 'safamotor.com' } },
     })
   }
 
@@ -37,7 +37,7 @@ export default function LoginPage() {
         <p style={{fontSize:11,color:'#5C6A82',textAlign:'center',margin:'3px 0 18px'}}>Grupo Safamotor · Concesionarios VAG</p>
         <form onSubmit={handleLogin}>
           <label style={{display:'block',fontSize:11,fontWeight:500,marginBottom:4}}>Correo electrónico</label>
-          <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="jgarcia@safamotor.es"
+          <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="jgarcia@safamotor.com"
             style={{display:'block',width:'100%',border:'0.5px solid rgba(15,24,39,.08)',borderRadius:8,padding:'8px 11px',fontSize:12,marginBottom:10,outline:'none'}}/>
           <label style={{display:'block',fontSize:11,fontWeight:500,marginBottom:4}}>Contraseña</label>
           <input type="password" required value={password} onChange={e=>setPassword(e.target.value)}
