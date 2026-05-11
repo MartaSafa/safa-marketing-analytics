@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 
 export default async function MetaPage() {
-  const supabase = createClient()
+ const supabase = createServiceClient()
 
   const { data: campanas } = await supabase
     .from('meta_campaigns')
