@@ -1,9 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 
 export default function MetaPage() {
-  const supabase = createClient()
   const [lista, setLista] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [desde, setDesde] = useState('2025-01-01')
@@ -14,29 +12,10 @@ export default function MetaPage() {
 
   async function fetchData() {
     setLoading(true)
-    let query = supabase
-      .from('meta_campaigns')
-      .select('*')
-      .gte('date', desde)
-      .lte('date', hasta)
-
-    if (marca !== 'todas') query = query.eq('brand', marca)
-
-    const { data } = await query.order('date', { ascending: false })
-
-    const map = new Map()
-    data?.forEach(c => {
-      if (!map.has(c.campaign_id)) {
-        map.set(c.campaign_id, { ...c })
-      } else {
-        const ex = map.get(c.campaign_id)
-        ex.spend += c.spend
-        ex.impressions += c.impressions
-        ex.clicks += c.clicks
-        ex.leads += c.leads
-      }
-    })
-    setLista(Array.from(map.values()))
+    const params = new URLSearchParams({ desde, hasta, marca })
+    const res = await fetch(`/api/meta?${params}`)
+    const data = await res.json()
+    setLista(data.campanas || [])
     setLoading(false)
   }
 
@@ -62,24 +41,21 @@ export default function MetaPage() {
 
   return (
     <div>
-      {/* FILTROS */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, background: '#fff', border: '0.5px solid rgba(15,24,39,.08)', borderRadius: 10, padding: '8px 14px' }}>
         <span style={{ fontSize: 11, color: '#5C6A82' }}>Desde</span>
         <input type="date" value={desde} onChange={e => setDesde(e.target.value)} style={inp} />
         <span style={{ fontSize: 11, color: '#5C6A82' }}>Hasta</span>
         <input type="date" value={hasta} onChange={e => setHasta(e.target.value)} style={inp} />
         <div style={{ width: 1, height: 16, background: 'rgba(15,24,39,.08)' }} />
-        <span style={{ fontSize: 11, color: '#5C6A82' }}>Marca</span>
         <select value={marca} onChange={e => setMarca(e.target.value)} style={inp}>
-          <option value="todas">Todas</option>
+          <option value="todas">Todas las marcas</option>
           <option value="audi">Audi</option>
           <option value="vw">Volkswagen</option>
           <option value="skoda">Škoda</option>
         </select>
-        {loading && <span style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 4 }}>Cargando...</span>}
+        {loading && <span style={{ fontSize: 10, color: '#9CA3AF' }}>Cargando...</span>}
       </div>
 
-      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 7, marginBottom: 12 }}>
         {kpis.map(k => (
           <div key={k.label} style={{ ...card, borderTop: `2px solid ${k.color}` }}>
@@ -89,7 +65,6 @@ export default function MetaPage() {
         ))}
       </div>
 
-      {/* TABLA */}
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '0.5px solid rgba(15,24,39,.08)' }}>
           <span style={{ fontSize: 12, fontWeight: 500, color: '#0F1827' }}>Campañas Meta</span>
